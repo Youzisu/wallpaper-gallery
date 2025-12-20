@@ -18,6 +18,7 @@ const CONFIG = {
   GITHUB_REPO: 'nuanXinProPic',
   GITHUB_BRANCH: 'main',
   WALLPAPER_DIR: 'wallpaper',
+  THUMBNAIL_DIR: 'thumbnail',
 
   // 支持的图片格式
   IMAGE_EXTENSIONS: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
@@ -29,6 +30,7 @@ const CONFIG = {
 
 // 使用 raw.githubusercontent.com（更稳定，支持中文文件名）
 const RAW_BASE_URL = `https://raw.githubusercontent.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/${CONFIG.GITHUB_BRANCH}/${CONFIG.WALLPAPER_DIR}`
+const THUMBNAIL_BASE_URL = `https://raw.githubusercontent.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/${CONFIG.GITHUB_BRANCH}/${CONFIG.THUMBNAIL_DIR}`
 
 /**
  * 通过 GitHub API 获取壁纸列表
@@ -119,13 +121,20 @@ function generateWallpaperData(files) {
     // 根据索引生成模拟上传时间（越前面的越新）
     const uploadDate = new Date(now.getTime() - index * 3600000) // 每张间隔1小时
 
+    // 文件名（不含扩展名）
+    const filenameNoExt = path.basename(file.name, path.extname(file.name))
+
     // 使用 raw GitHub URL（更稳定）
     const imageUrl = `${RAW_BASE_URL}/${encodeURIComponent(file.name)}`
+
+    // 缩略图 URL（webp 格式）
+    const thumbnailUrl = `${THUMBNAIL_BASE_URL}/${encodeURIComponent(filenameNoExt)}.webp`
 
     return {
       id: `wallpaper-${index + 1}`,
       filename: file.name,
       url: imageUrl,
+      thumbnailUrl,
       downloadUrl: imageUrl,
       size: file.size,
       format: ext,
@@ -177,6 +186,7 @@ async function main() {
       total: wallpapers.length,
       source: `https://github.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}`,
       baseUrl: RAW_BASE_URL,
+      thumbnailBaseUrl: THUMBNAIL_BASE_URL,
       wallpapers,
     }
 
@@ -189,6 +199,7 @@ async function main() {
     console.log(`Total wallpapers: ${wallpapers.length}`)
     console.log(`Output file: ${outputPath}`)
     console.log(`Base URL: ${RAW_BASE_URL}`)
+    console.log(`Thumbnail URL: ${THUMBNAIL_BASE_URL}`)
     console.log('')
 
     // 输出统计
