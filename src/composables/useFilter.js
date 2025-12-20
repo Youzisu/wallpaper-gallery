@@ -17,6 +17,9 @@ export function useFilter(wallpapers) {
   // 格式筛选
   const formatFilter = ref('all')
 
+  // 分类筛选
+  const categoryFilter = ref(localStorage.getItem(STORAGE_KEYS.CATEGORY) || 'all')
+
   // 防抖处理搜索
   const updateDebouncedQuery = debounce((value) => {
     debouncedQuery.value = value
@@ -29,6 +32,11 @@ export function useFilter(wallpapers) {
   // 保存排序偏好
   watch(sortBy, (value) => {
     localStorage.setItem(STORAGE_KEYS.SORT, value)
+  })
+
+  // 保存分类筛选偏好
+  watch(categoryFilter, (value) => {
+    localStorage.setItem(STORAGE_KEYS.CATEGORY, value)
   })
 
   // 过滤后的壁纸列表
@@ -48,6 +56,13 @@ export function useFilter(wallpapers) {
     if (formatFilter.value !== 'all') {
       result = result.filter(w =>
         w.format.toLowerCase() === formatFilter.value.toLowerCase(),
+      )
+    }
+
+    // 分类过滤
+    if (categoryFilter.value !== 'all') {
+      result = result.filter(w =>
+        w.category === categoryFilter.value,
       )
     }
 
@@ -81,7 +96,7 @@ export function useFilter(wallpapers) {
 
   // 是否有激活的筛选条件
   const hasActiveFilters = computed(() => {
-    return debouncedQuery.value || formatFilter.value !== 'all'
+    return debouncedQuery.value || formatFilter.value !== 'all' || categoryFilter.value !== 'all'
   })
 
   // 重置所有筛选条件
@@ -89,6 +104,7 @@ export function useFilter(wallpapers) {
     searchQuery.value = ''
     debouncedQuery.value = ''
     formatFilter.value = 'all'
+    categoryFilter.value = 'all'
     sortBy.value = 'newest'
   }
 
@@ -96,6 +112,7 @@ export function useFilter(wallpapers) {
     searchQuery,
     sortBy,
     formatFilter,
+    categoryFilter,
     filteredWallpapers,
     resultCount,
     hasActiveFilters,

@@ -118,6 +118,26 @@ async function fetchWallpapersFromGitHub() {
 }
 
 /**
+ * 从文件名中提取分类
+ * 文件名格式: {分类}--{原文件名}.{ext}
+ * 例如: 游戏--原神_雷电将军.png -> 游戏
+ */
+function extractCategory(filename) {
+  const filenameNoExt = path.basename(filename, path.extname(filename))
+
+  // 检查是否包含分类前缀（使用 -- 分隔）
+  if (filenameNoExt.includes('--')) {
+    const parts = filenameNoExt.split('--')
+    if (parts.length >= 2 && parts[0].trim()) {
+      return parts[0].trim()
+    }
+  }
+
+  // 没有分类前缀，返回 '未分类'
+  return '未分类'
+}
+
+/**
  * 生成壁纸数据
  */
 function generateWallpaperData(files) {
@@ -132,6 +152,9 @@ function generateWallpaperData(files) {
     // 文件名（不含扩展名）
     const filenameNoExt = path.basename(file.name, path.extname(file.name))
 
+    // 提取分类
+    const category = extractCategory(file.name)
+
     // 使用 jsdelivr CDN URL
     const imageUrl = `${RAW_BASE_URL}/${encodeURIComponent(file.name)}`
 
@@ -141,6 +164,7 @@ function generateWallpaperData(files) {
     return {
       id: `wallpaper-${index + 1}`,
       filename: file.name,
+      category,
       url: imageUrl,
       thumbnailUrl,
       downloadUrl: imageUrl,
@@ -214,9 +238,22 @@ async function main() {
       jpg: wallpapers.filter(w => w.format === 'JPG' || w.format === 'JPEG').length,
       png: wallpapers.filter(w => w.format === 'PNG').length,
     }
-    console.log('Statistics:')
+    console.log('Format Statistics:')
     console.log(`  JPG: ${stats.jpg}`)
     console.log(`  PNG: ${stats.png}`)
+
+    // 分类统计
+    const categoryStats = {}
+    wallpapers.forEach((w) => {
+      categoryStats[w.category] = (categoryStats[w.category] || 0) + 1
+    })
+    console.log('')
+    console.log('Category Statistics:')
+    Object.entries(categoryStats)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([cat, count]) => {
+        console.log(`  ${cat}: ${count}`)
+      })
   }
   catch (error) {
     console.error('Error generating wallpaper data:', error)

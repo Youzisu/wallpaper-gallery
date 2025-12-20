@@ -21,7 +21,7 @@ const { initTheme } = useTheme()
 const { wallpapers, loading, error, total, fetchWallpapers, getPrevWallpaper, getNextWallpaper } = useWallpapers()
 
 // Filter
-const { searchQuery, sortBy, formatFilter, filteredWallpapers, resultCount } = useFilter(wallpapers)
+const { searchQuery, sortBy, formatFilter, categoryFilter, filteredWallpapers, resultCount } = useFilter(wallpapers)
 
 // Modal
 const { isOpen, currentData, open, close, updateData } = useModal()
@@ -100,6 +100,7 @@ onMounted(() => {
         <FilterPanel
           v-model:sort-by="sortBy"
           v-model:format-filter="formatFilter"
+          v-model:category-filter="categoryFilter"
           :result-count="resultCount"
           :total-count="total"
           @reset="handleReset"

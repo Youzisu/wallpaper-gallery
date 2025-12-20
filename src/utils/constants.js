@@ -59,6 +59,16 @@ export const FORMAT_OPTIONS = [
   { value: 'png', label: 'PNG' },
 ]
 
+// 分类过滤选项
+export const CATEGORY_OPTIONS = [
+  { value: 'all', label: '全部分类' },
+  { value: '游戏', label: '游戏' },
+  { value: '动漫', label: '动漫' },
+  { value: '风景', label: '风景' },
+  { value: '其他', label: '其他' },
+  { value: '未分类', label: '未分类' },
+]
+
 // ========================================
 // 分辨率标签阈值（按长边判断，用于弹窗中根据真实图片尺寸动态生成标签）
 // ========================================
@@ -81,5 +91,6 @@ export const THEMES = {
 export const STORAGE_KEYS = {
   THEME: 'wallpaper-gallery-theme',
   SORT: 'wallpaper-gallery-sort',
+  CATEGORY: 'wallpaper-gallery-category',
   VIEW_MODE: 'wallpaper-gallery-view-mode',
 }

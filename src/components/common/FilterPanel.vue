@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { FORMAT_OPTIONS, SORT_OPTIONS } from '@/utils/constants'
+import { CATEGORY_OPTIONS, FORMAT_OPTIONS, SORT_OPTIONS } from '@/utils/constants'
 
 const props = defineProps({
   sortBy: {
@@ -8,6 +8,10 @@ const props = defineProps({
     default: 'newest',
   },
   formatFilter: {
+    type: String,
+    default: 'all',
+  },
+  categoryFilter: {
     type: String,
     default: 'all',
   },
@@ -21,11 +25,11 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:sortBy', 'update:formatFilter', 'reset'])
+const emit = defineEmits(['update:sortBy', 'update:formatFilter', 'update:categoryFilter', 'reset'])
 
 // 是否有激活的筛选条件
 const hasActiveFilters = computed(() => {
-  return props.formatFilter !== 'all' || props.sortBy !== 'newest'
+  return props.formatFilter !== 'all' || props.categoryFilter !== 'all' || props.sortBy !== 'newest'
 })
 
 function handleSortChange(value) {
@@ -36,9 +40,14 @@ function handleFormatChange(value) {
   emit('update:formatFilter', value)
 }
 
+function handleCategoryChange(value) {
+  emit('update:categoryFilter', value)
+}
+
 function handleReset() {
   emit('update:sortBy', 'newest')
   emit('update:formatFilter', 'all')
+  emit('update:categoryFilter', 'all')
   emit('reset')
 }
 </script>
@@ -70,6 +79,25 @@ function handleReset() {
     </div>
 
     <div class="filter-right">
+      <!-- Category Filter -->
+      <div class="filter-item">
+        <span class="filter-label">分类</span>
+        <el-select
+          :model-value="categoryFilter"
+          placeholder="全部分类"
+          size="default"
+          style="width: 120px"
+          @change="handleCategoryChange"
+        >
+          <el-option
+            v-for="option in CATEGORY_OPTIONS"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
+        </el-select>
+      </div>
+
       <!-- Format Filter -->
       <div class="filter-item">
         <span class="filter-label">格式</span>
