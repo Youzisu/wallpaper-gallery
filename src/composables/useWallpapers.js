@@ -3,6 +3,7 @@
 // ========================================
 
 import { computed, ref } from 'vue'
+import { decodeData } from '@/utils/codec'
 import { SERIES_CONFIG } from '@/utils/constants'
 import { buildImageUrl } from '@/utils/format'
 
@@ -74,7 +75,26 @@ export function useWallpapers() {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      const wallpaperList = data.wallpapers || data
+
+      // 支持加密后的结构：blob / payload 是自定义编码的字符串
+      let wallpaperList
+      const encoded = data.blob || data.payload
+      if (encoded) {
+        try {
+          // 使用自定义解码函数（支持 v1. 前缀的新格式）
+          const jsonStr = decodeData(encoded)
+          const decoded = JSON.parse(jsonStr)
+          wallpaperList = decoded.wallpapers || decoded
+        }
+        catch (err) {
+          console.warn('Failed to decode wallpaper payload, fallback to plain data:', err)
+          wallpaperList = data.wallpapers || []
+        }
+      }
+      else {
+        // 兼容旧结构：直接从 wallpapers 字段或整个 data 中读取
+        wallpaperList = data.wallpapers || data
+      }
 
       // 处理壁纸数据（JSON 中已包含完整 URL，或需要转换相对路径）
       const transformedList = wallpaperList.map((wallpaper) => {

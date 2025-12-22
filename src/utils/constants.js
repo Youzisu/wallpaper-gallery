@@ -2,11 +2,17 @@
 // 常量定义
 // ========================================
 
-// GitHub 图床基础 URL（使用 jsdelivr CDN 加速）
-const CDN_BASE = 'https://cdn.jsdelivr.net/gh/IT-NuanxinPro/nuanXinProPic@main'
+// CDN URL 动态构建（防止静态分析提取完整链接）
+const _cdnParts = {
+  p: 'https:/',
+  h: '/cdn.jsdelivr.net',
+  g: '/gh/IT-NuanxinPro',
+  r: '/nuanXinProPic@main',
+}
+const CDN_BASE = `${_cdnParts.p}${_cdnParts.h}${_cdnParts.g}${_cdnParts.r}`
 
 // 备用：raw.githubusercontent.com（如 jsdelivr 不可用时切换）
-// const CDN_BASE = 'https://raw.githubusercontent.com/IT-NuanxinPro/nuanXinProPic/main'
+// const _cdnParts = { p: 'https:/', h: '/raw.githubusercontent.com', g: '/IT-NuanxinPro', r: '/nuanXinProPic/main' }
 
 // ========================================
 // 三大系列配置
@@ -56,13 +62,6 @@ export const DEFAULT_SERIES = {
 // 所有系列ID列表
 export const ALL_SERIES = ['desktop', 'mobile', 'avatar']
 
-// 兼容旧代码：保留原有的基础URL（指向desktop系列）
-export const IMAGE_BASE_URL = SERIES_CONFIG.desktop.imageBaseUrl
-export const THUMBNAIL_BASE_URL = SERIES_CONFIG.desktop.thumbnailBaseUrl
-
-// 兼容旧代码：保留原有的数据URL（指向desktop系列）
-export const WALLPAPERS_DATA_URL = SERIES_CONFIG.desktop.dataUrl
-
 // ========================================
 // 图片代理服务配置（备用方案，如本地缩略图不可用时使用）
 // ========================================
@@ -71,23 +70,6 @@ export const IMAGE_PROXY = {
   THUMB_WIDTH: 400,
   THUMB_QUALITY: 80,
   FORMAT: 'webp',
-}
-
-/**
- * 生成缩略图 URL
- * 优先使用本地 GitHub 仓库中的预生成缩略图
- * @param {string} originalUrl - 原图 URL
- * @returns {string} 缩略图 URL
- */
-export function getThumbnailUrl(originalUrl) {
-  // 从原图 URL 中提取文件名（不含扩展名）
-  // 例如：https://raw.githubusercontent.com/.../wallpaper/图片.jpg -> 图片
-  const urlParts = originalUrl.split('/')
-  const filename = urlParts[urlParts.length - 1]
-  const filenameNoExt = filename.substring(0, filename.lastIndexOf('.'))
-
-  // 返回本地缩略图 URL（webp 格式）
-  return `${THUMBNAIL_BASE_URL}/${encodeURIComponent(filenameNoExt)}.webp`
 }
 
 // 排序选项
@@ -105,23 +87,6 @@ export const FORMAT_OPTIONS = [
   { value: 'all', label: '全部格式' },
   { value: 'jpg', label: 'JPG' },
   { value: 'png', label: 'PNG' },
-]
-
-// 分类过滤选项
-export const CATEGORY_OPTIONS = [
-  { value: 'all', label: '全部分类' },
-  { value: '游戏', label: '游戏' },
-  { value: '动漫', label: '动漫' },
-  { value: '风景', label: '风景' },
-  { value: '其他', label: '其他' },
-  { value: '未分类', label: '未分类' },
-]
-
-// 壁纸类型选项（电脑壁纸 / 手机壁纸 / 头像）
-export const WALLPAPER_TYPE_OPTIONS = [
-  { value: 'desktop', label: '电脑壁纸', icon: 'monitor' },
-  { value: 'mobile', label: '手机壁纸', icon: 'smartphone' },
-  { value: 'avatar', label: '头像', icon: 'user' },
 ]
 
 // ========================================
@@ -149,6 +114,5 @@ export const STORAGE_KEYS = {
   SORT: 'wallpaper-gallery-sort',
   CATEGORY: 'wallpaper-gallery-category',
   VIEW_MODE: 'wallpaper-gallery-view-mode',
-  WALLPAPER_TYPE: 'wallpaper-gallery-wallpaper-type',
   CURRENT_SERIES: 'wallpaper-gallery-current-series', // 当前选择的系列
 }

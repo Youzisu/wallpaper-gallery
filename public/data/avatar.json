@@ -1,10 +1,9 @@
 {
-  "generatedAt": "2025-12-22T13:46:39.289Z",
+  "generatedAt": "2025-12-22T16:04:47.889Z",
   "series": "avatar",
   "seriesName": "头像",
   "total": 0,
-  "source": "https://github.com/IT-NuanxinPro/nuanXinProPic",
-  "baseUrl": "https://cdn.jsdelivr.net/gh/IT-NuanxinPro/nuanXinProPic@main/wallpaper/avatar",
-  "thumbnailBaseUrl": "https://cdn.jsdelivr.net/gh/IT-NuanxinPro/nuanXinProPic@main/thumbnail/avatar",
-  "wallpapers": []
+  "schema": 1,
+  "env": "production",
+  "blob": "v1..56V"
 }

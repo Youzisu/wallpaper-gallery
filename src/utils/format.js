@@ -12,28 +12,6 @@ const _urlParts = {
   r: '/nuanXinProPic@main',
 }
 
-// CDN 缓存版本号（更新图片后递增此版本号以清除 jsDelivr 缓存）
-export const CDN_VERSION = '1.0.1'
-
-/**
- * 为任意 URL 追加 CDN 版本号参数
- * - 如果已经带有查询参数，则追加 &v=xxx
- * - 如果没有查询参数，则追加 ?v=xxx
- * - 如果 URL 为空或已包含 v=（你手动写了版本），则原样返回
- * @param {string} url - 原始 URL
- * @returns {string} 带版本号的 URL
- */
-export function withCdnVersion(url) {
-  if (!url)
-    return url
-
-  // 已经手动带了版本参数的，避免重复追加
-  if (url.includes('v='))
-    return url
-
-  return url.includes('?') ? `${url}&v=${CDN_VERSION}` : `${url}?v=${CDN_VERSION}`
-}
-
 /**
  * 动态构建图片 URL（防止静态分析）
  * @param {string} path - 相对路径，如 /wallpaper/desktop/xxx.png
@@ -41,7 +19,7 @@ export function withCdnVersion(url) {
  */
 export function buildImageUrl(path) {
   const { p, h, g, r } = _urlParts
-  return `${p}${h}${g}${r}${path}?v=${CDN_VERSION}`
+  return `${p}${h}${g}${r}${path}`
 }
 
 /**
@@ -162,25 +140,6 @@ export function debounce(fn, delay = 300) {
     timer = setTimeout(() => {
       fn.apply(this, args)
     }, delay)
-  }
-}
-
-/**
- * 节流函数
- * @param {Function} fn - 要节流的函数
- * @param {number} limit - 时间限制（毫秒）
- * @returns {Function} 节流后的函数
- */
-export function throttle(fn, limit = 300) {
-  let inThrottle = false
-  return function (...args) {
-    if (!inThrottle) {
-      fn.apply(this, args)
-      inThrottle = true
-      setTimeout(() => {
-        inThrottle = false
-      }, limit)
-    }
   }
 }
 

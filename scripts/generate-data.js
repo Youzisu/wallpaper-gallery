@@ -3,14 +3,27 @@
  * 在构建前运行，为三个系列（desktop, mobile, avatar）分别生成 JSON 文件
  */
 
+import { Buffer } from 'node:buffer'
 import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { CHAR_MAP_ENCODE, VERSION_PREFIX } from '../src/utils/codec-config.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+/**
+ * 自定义编码（Base64 + 字符映射 + 反转）
+ * @param {string} str - 原始字符串
+ * @returns {string} 编码后的字符串
+ */
+function encodeData(str) {
+  const base64 = Buffer.from(str, 'utf-8').toString('base64')
+  const mapped = base64.split('').map(c => CHAR_MAP_ENCODE[c] || c).join('')
+  return VERSION_PREFIX + mapped.split('').reverse().join('')
+}
 
 // 配置
 const CONFIG = {
@@ -342,17 +355,18 @@ async function processSeries(seriesId, seriesConfig) {
     console.log(`  No image files found for ${seriesConfig.name}`)
     // 生成空的 JSON 文件
     const wallpapers = []
-    const { rawBaseUrl, thumbnailBaseUrl, previewBaseUrl } = getBaseUrls(seriesConfig)
+    const { previewBaseUrl } = getBaseUrls(seriesConfig)
+    const blob = encodeData(JSON.stringify(wallpapers))
 
     const outputData = {
       generatedAt: new Date().toISOString(),
       series: seriesId,
       seriesName: seriesConfig.name,
       total: 0,
-      source: `https://github.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}`,
-      baseUrl: rawBaseUrl,
-      thumbnailBaseUrl,
-      wallpapers,
+      schema: 1, // 数据结构版本号，方便以后升级
+      env: process.env.NODE_ENV || 'production',
+      // 加密后的数据块
+      blob,
     }
 
     // 添加预览图 URL（仅 desktop 系列）
@@ -374,17 +388,19 @@ async function processSeries(seriesId, seriesConfig) {
   wallpapers.sort((a, b) => b.size - a.size)
 
   // 写入 JSON 文件
-  const { rawBaseUrl, thumbnailBaseUrl, previewBaseUrl } = getBaseUrls(seriesConfig)
+  const { previewBaseUrl } = getBaseUrls(seriesConfig)
   const outputPath = path.join(CONFIG.OUTPUT_DIR, seriesConfig.outputFile)
+  const blob = encodeData(JSON.stringify(wallpapers))
+
   const outputData = {
     generatedAt: new Date().toISOString(),
     series: seriesId,
     seriesName: seriesConfig.name,
     total: wallpapers.length,
-    source: `https://github.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}`,
-    baseUrl: rawBaseUrl,
-    thumbnailBaseUrl,
-    wallpapers,
+    schema: 1, // 数据结构版本号
+    env: process.env.NODE_ENV || 'production',
+    // 不再直接明文输出 wallpapers，而是输出加密后的数据块
+    blob,
   }
 
   // 添加预览图 URL（仅 desktop 系列）
