@@ -17,14 +17,12 @@ export function initAntiDebug() {
   const warningMessage = '兄弟bro，想打开控制台干啥呢？ 😏'
   let isBlocked = false
 
-  // 检测到开发者工具时的处理
+  // 检测到开发者工具时的处理：直接刷新页面
   const onDevToolsDetected = () => {
     if (!isBlocked) {
       isBlocked = true
-      alert(warningMessage)
-      setTimeout(() => {
-        window.location.reload()
-      }, 50)
+      // 立即刷新页面，不弹窗
+      window.location.reload()
     }
   }
 

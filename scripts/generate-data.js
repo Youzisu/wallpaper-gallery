@@ -74,19 +74,6 @@ const CONFIG = {
   },
 }
 
-// 使用 jsdelivr CDN 加速（国内访问更快）
-function getBaseUrls(seriesConfig) {
-  const rawBaseUrl = `https://cdn.jsdelivr.net/gh/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}@${CONFIG.GITHUB_BRANCH}/${seriesConfig.wallpaperDir}`
-  const thumbnailBaseUrl = `https://cdn.jsdelivr.net/gh/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}@${CONFIG.GITHUB_BRANCH}/${seriesConfig.thumbnailDir}`
-
-  // 预览图 URL（仅 desktop 系列有）
-  const previewBaseUrl = seriesConfig.hasPreview
-    ? `https://cdn.jsdelivr.net/gh/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}@${CONFIG.GITHUB_BRANCH}/${seriesConfig.previewDir}`
-    : null
-
-  return { rawBaseUrl, thumbnailBaseUrl, previewBaseUrl }
-}
-
 /**
  * 通过本地目录获取壁纸列表（优先使用，避免 API 限流）
  * @returns {{ files: Array, repoPath: string } | null}
@@ -258,7 +245,6 @@ function getResolutionLabel(width, height) {
  */
 function generateWallpaperData(files, seriesConfig, localRepoPath = null) {
   const now = new Date()
-  const { rawBaseUrl, thumbnailBaseUrl, previewBaseUrl } = getBaseUrls(seriesConfig)
 
   return files.map((file, index) => {
     const ext = path.extname(file.name).replace('.', '').toUpperCase()
@@ -272,15 +258,11 @@ function generateWallpaperData(files, seriesConfig, localRepoPath = null) {
     // 提取分类
     const category = extractCategory(file.name)
 
-    // 使用 jsdelivr CDN URL
-    const imageUrl = `${rawBaseUrl}/${encodeURIComponent(file.name)}`
-
-    // 缩略图 URL（webp 格式）
-    const thumbnailUrl = `${thumbnailBaseUrl}/${encodeURIComponent(filenameNoExt)}.webp`
-
-    // 预览图 URL（仅 desktop 系列，webp 格式）
-    const previewUrl = previewBaseUrl
-      ? `${previewBaseUrl}/${encodeURIComponent(filenameNoExt)}.webp`
+    // 只存储相对路径（前端会用 buildImageUrl 动态拼接完整 URL）
+    const imagePath = `/${seriesConfig.wallpaperDir}/${encodeURIComponent(file.name)}`
+    const thumbnailPath = `/${seriesConfig.thumbnailDir}/${encodeURIComponent(filenameNoExt)}.webp`
+    const previewPath = seriesConfig.hasPreview
+      ? `/${seriesConfig.previewDir}/${encodeURIComponent(filenameNoExt)}.webp`
       : null
 
     // 获取图片分辨率
@@ -305,18 +287,18 @@ function generateWallpaperData(files, seriesConfig, localRepoPath = null) {
       id: `${seriesConfig.id}-${index + 1}`,
       filename: file.name,
       category,
-      url: imageUrl,
-      thumbnailUrl,
-      downloadUrl: imageUrl,
+      // 存储相对路径，前端动态拼接（支持版本号刷新缓存）
+      path: imagePath,
+      thumbnailPath,
       size: file.size,
       format: ext,
       createdAt: uploadDate.toISOString(),
       sha: file.sha,
     }
 
-    // 添加预览图 URL（仅 desktop 系列）
-    if (previewUrl) {
-      wallpaperData.previewUrl = previewUrl
+    // 添加预览图路径（仅 desktop 系列）
+    if (previewPath) {
+      wallpaperData.previewPath = previewPath
     }
 
     // 添加分辨率信息
@@ -355,7 +337,6 @@ async function processSeries(seriesId, seriesConfig) {
     console.log(`  No image files found for ${seriesConfig.name}`)
     // 生成空的 JSON 文件
     const wallpapers = []
-    const { previewBaseUrl } = getBaseUrls(seriesConfig)
     const blob = encodeData(JSON.stringify(wallpapers))
 
     const outputData = {
@@ -367,11 +348,6 @@ async function processSeries(seriesId, seriesConfig) {
       env: process.env.NODE_ENV || 'production',
       // 加密后的数据块
       blob,
-    }
-
-    // 添加预览图 URL（仅 desktop 系列）
-    if (previewBaseUrl) {
-      outputData.previewBaseUrl = previewBaseUrl
     }
 
     const outputPath = path.join(CONFIG.OUTPUT_DIR, seriesConfig.outputFile)
@@ -388,7 +364,6 @@ async function processSeries(seriesId, seriesConfig) {
   wallpapers.sort((a, b) => b.size - a.size)
 
   // 写入 JSON 文件
-  const { previewBaseUrl } = getBaseUrls(seriesConfig)
   const outputPath = path.join(CONFIG.OUTPUT_DIR, seriesConfig.outputFile)
   const blob = encodeData(JSON.stringify(wallpapers))
 
@@ -401,11 +376,6 @@ async function processSeries(seriesId, seriesConfig) {
     env: process.env.NODE_ENV || 'production',
     // 不再直接明文输出 wallpapers，而是输出加密后的数据块
     blob,
-  }
-
-  // 添加预览图 URL（仅 desktop 系列）
-  if (previewBaseUrl) {
-    outputData.previewBaseUrl = previewBaseUrl
   }
 
   fs.writeFileSync(outputPath, JSON.stringify(outputData, null, 2))

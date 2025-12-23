@@ -29,18 +29,18 @@ function formatBytes(bytes) {
 }
 
 /**
- * 将相对路径转换为完整 URL
+ * 将相对路径转换为完整 URL（带版本号）
  * @param {object} wallpaper - 壁纸数据（包含相对路径）
  * @returns {object} 包含完整 URL 的壁纸数据
  */
 function transformWallpaperUrls(wallpaper) {
   return {
     ...wallpaper,
-    // 动态拼接完整 URL
-    url: wallpaper.path ? buildImageUrl(wallpaper.path) : '',
-    thumbnailUrl: wallpaper.thumbnailPath ? buildImageUrl(wallpaper.thumbnailPath) : '',
-    previewUrl: wallpaper.previewPath ? buildImageUrl(wallpaper.previewPath) : null,
-    downloadUrl: wallpaper.path ? buildImageUrl(wallpaper.path) : '',
+    // 动态拼接完整 URL（带版本号刷新缓存）
+    url: wallpaper.path ? buildImageUrl(wallpaper.path) : (wallpaper.url || ''),
+    thumbnailUrl: wallpaper.thumbnailPath ? buildImageUrl(wallpaper.thumbnailPath) : (wallpaper.thumbnailUrl || ''),
+    previewUrl: wallpaper.previewPath ? buildImageUrl(wallpaper.previewPath) : (wallpaper.previewUrl || null),
+    downloadUrl: wallpaper.path ? buildImageUrl(wallpaper.path) : (wallpaper.downloadUrl || ''),
   }
 }
 
@@ -96,13 +96,8 @@ export function useWallpapers() {
         wallpaperList = data.wallpapers || data
       }
 
-      // 处理壁纸数据（JSON 中已包含完整 URL，或需要转换相对路径）
+      // 处理壁纸数据：统一使用 buildImageUrl 拼接完整 URL（带版本号）
       const transformedList = wallpaperList.map((wallpaper) => {
-        // 如果 JSON 中已经有完整 URL，直接使用
-        if (wallpaper.url && wallpaper.thumbnailUrl) {
-          return wallpaper
-        }
-        // 否则从相对路径转换
         return transformWallpaperUrls(wallpaper)
       })
 
