@@ -1,6 +1,7 @@
 <script setup>
 import { gsap } from 'gsap'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useDevice } from '@/composables/useDevice'
 import { IMAGE_PROXY } from '@/utils/constants'
 import { formatFileSize, getDisplayFilename, highlightText } from '@/utils/format'
 
@@ -27,9 +28,13 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click', 'imageLoad'])
+
+// 设备检测
+const { isMobile } = useDevice()
 
 const cardRef = ref(null)
+const imageRef = ref(null)
 const imageLoaded = ref(false)
 const imageError = ref(false)
 const useProxy = ref(false)
@@ -41,6 +46,17 @@ const thumbnailUrl = computed(() => {
     return `${IMAGE_PROXY.BASE_URL}?url=${encodeURIComponent(props.wallpaper.url)}&w=${IMAGE_PROXY.THUMB_WIDTH}&q=${IMAGE_PROXY.THUMB_QUALITY}&output=${IMAGE_PROXY.FORMAT}`
   }
   return props.wallpaper.thumbnailUrl || props.wallpaper.url
+})
+
+// 检查图片是否已在浏览器缓存中
+onMounted(() => {
+  // 使用 nextTick 确保 DOM 已渲染
+  setTimeout(() => {
+    if (imageRef.value && imageRef.value.complete && imageRef.value.naturalWidth > 0) {
+      // 图片已经加载完成（从缓存中）
+      imageLoaded.value = true
+    }
+  }, 0)
 })
 
 const formattedSize = computed(() => formatFileSize(props.wallpaper.size))
@@ -66,6 +82,15 @@ const cardImageStyle = computed(() => {
 
 // 列表视图图片样式
 const listImageStyle = computed(() => {
+  // 移动端使用正方形图片，更和谐
+  if (isMobile.value) {
+    return {
+      width: '100px',
+      height: '100px',
+      aspectRatio: '1 / 1',
+    }
+  }
+  // PC端保持原逻辑
   const [w, h] = props.aspectRatio.split('/').map(Number)
   const ratio = w / h
   const baseWidth = ratio >= 1 ? 200 : 120 // 横屏200px，竖屏120px
@@ -78,6 +103,7 @@ const listImageStyle = computed(() => {
 function handleImageLoad() {
   imageLoaded.value = true
   imageError.value = false
+  emit('imageLoad')
 }
 
 function handleImageError() {
@@ -97,8 +123,12 @@ function handleClick() {
   emit('click', props.wallpaper)
 }
 
-// 悬停动画
+// 悬停动画（仅 PC 端）
 function handleMouseEnter(e) {
+  // 移动端不需要悬浮效果
+  if (isMobile.value)
+    return
+
   const card = e.currentTarget
   const overlay = card.querySelector('.card-overlay')
   const img = card.querySelector('.card-image img')
@@ -125,6 +155,10 @@ function handleMouseEnter(e) {
 }
 
 function handleMouseLeave(e) {
+  // 移动端不需要悬浮效果
+  if (isMobile.value)
+    return
+
   const card = e.currentTarget
   const overlay = card.querySelector('.card-overlay')
   const img = card.querySelector('.card-image img')
@@ -179,6 +213,7 @@ function handleMouseLeave(e) {
 
       <!-- Image -->
       <img
+        ref="imageRef"
         :src="thumbnailUrl"
         :alt="wallpaper.filename"
         loading="lazy"
@@ -187,8 +222,8 @@ function handleMouseLeave(e) {
         @error="handleImageError"
       >
 
-      <!-- Overlay on hover -->
-      <div class="card-overlay">
+      <!-- Overlay on hover (仅 PC 端显示) -->
+      <div v-if="!isMobile" class="card-overlay">
         <div class="overlay-content">
           <span class="overlay-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -422,7 +457,16 @@ function handleMouseLeave(e) {
     // width 和 aspect-ratio 由 listImageStyle 动态控制
 
     @include mobile-only {
-      // 移动端缩小宽度由 listImageStyle 处理
+      // 移动端使用正方形图片
+      width: 100px !important;
+      height: 100px !important;
+      border-radius: var(--radius-md);
+
+      img {
+        object-fit: cover;
+        width: 100%;
+        height: 100%;
+      }
     }
   }
 
@@ -432,6 +476,10 @@ function handleMouseLeave(e) {
     flex-direction: column;
     justify-content: center;
     padding: $spacing-md $spacing-lg;
+
+    @include mobile-only {
+      padding: $spacing-sm $spacing-md;
+    }
   }
 
   .card-filename {
@@ -443,10 +491,19 @@ function handleMouseLeave(e) {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     line-height: 1.4;
+
+    @include mobile-only {
+      font-size: $font-size-sm;
+    }
   }
 
   .card-meta {
     gap: $spacing-lg;
+
+    @include mobile-only {
+      gap: $spacing-md;
+      font-size: $font-size-xs;
+    }
   }
 }
 </style>

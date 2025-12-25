@@ -142,6 +142,8 @@ html {
   -moz-osx-font-smoothing: grayscale;
   // 移动端防止横向滚动（使用 clip 避免影响 sticky 定位）
   overflow-x: clip;
+  // 防止滚动条出现/消失时页面抖动（预留滚动条空间）
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -440,7 +442,9 @@ body.modal-open {
   overflow: hidden !important;
   position: fixed;
   width: 100%;
-  height: 100%;
+  left: 0;
+  right: 0;
+  // top 值由 JS 动态设置，用于保持滚动位置
 }
 
 // ========================================

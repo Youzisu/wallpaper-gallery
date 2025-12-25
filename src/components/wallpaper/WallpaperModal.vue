@@ -2,6 +2,7 @@
 import { gsap } from 'gsap'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { useDevice } from '@/composables/useDevice'
 import { downloadFile, formatDate, formatFileSize, formatRelativeTime, getDisplayFilename, getFileExtension, getResolutionLabel } from '@/utils/format'
 
 const props = defineProps({
@@ -17,6 +18,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'prev', 'next'])
 
+// 设备检测
+const { isMobile } = useDevice()
+
 const modalRef = ref(null)
 const contentRef = ref(null)
 const infoRef = ref(null)
@@ -24,6 +28,9 @@ const imageLoaded = ref(false)
 const imageError = ref(false)
 const downloading = ref(false)
 const actualDimensions = ref({ width: 0, height: 0 })
+
+// 保存滚动位置（修复移动端弹窗关闭后滚动位置丢失问题）
+const savedScrollY = ref(0)
 
 // 渐进式加载状态
 const previewLoaded = ref(false)
@@ -56,14 +63,23 @@ const displayUrl = computed(() => {
 // GSAP 入场动画
 watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
-    // 禁止背景滚动
+    // 保存当前滚动位置
+    savedScrollY.value = window.scrollY || window.pageYOffset
+
+    // 设置 body top 保持视觉位置，禁止背景滚动
+    document.body.style.top = `-${savedScrollY.value}px`
     document.body.classList.add('modal-open')
+
     await nextTick()
     animateIn()
   }
   else {
     // 恢复背景滚动
     document.body.classList.remove('modal-open')
+    document.body.style.top = ''
+
+    // 恢复滚动位置（立即跳转，无动画）
+    window.scrollTo({ top: savedScrollY.value, behavior: 'instant' })
   }
 })
 
@@ -248,8 +264,13 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
-  // 确保清理 modal-open 类
+  // 确保清理 modal-open 类和样式
   document.body.classList.remove('modal-open')
+  document.body.style.top = ''
+  // 如果组件销毁时弹窗是打开的，恢复滚动位置
+  if (savedScrollY.value > 0) {
+    window.scrollTo({ top: savedScrollY.value, behavior: 'instant' })
+  }
 })
 </script>
 
@@ -356,33 +377,68 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="info-details">
-              <!-- 分辨率尺寸 -->
-              <div v-if="actualDimensions.width > 0" class="detail-item detail-item--highlight">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                  <path d="M8 21h8M12 17v4" />
-                </svg>
-                <span>{{ actualDimensions.width }} × {{ actualDimensions.height }}</span>
-              </div>
-              <!-- 文件大小 -->
-              <div class="detail-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                </svg>
-                <span>{{ formattedSize }}</span>
-              </div>
-              <!-- 上传日期 -->
-              <div class="detail-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                <span>{{ formattedDate }}</span>
-                <span class="detail-sub">({{ relativeTime }})</span>
-              </div>
+            <div class="info-details" :class="{ 'info-details--compact': isMobile }">
+              <!-- 移动端紧凑布局 -->
+              <template v-if="isMobile">
+                <!-- 第一行：分辨率 -->
+                <div v-if="actualDimensions.width > 0" class="detail-row">
+                  <div class="detail-item detail-item--highlight">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <path d="M8 21h8M12 17v4" />
+                    </svg>
+                    <span>{{ actualDimensions.width }} × {{ actualDimensions.height }}</span>
+                  </div>
+                </div>
+                <!-- 第二行：文件大小 + 日期 -->
+                <div class="detail-row">
+                  <div class="detail-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                    </svg>
+                    <span>{{ formattedSize }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    <span>{{ formattedDate }}</span>
+                  </div>
+                </div>
+              </template>
+
+              <!-- PC端保持原布局 -->
+              <template v-else>
+                <!-- 分辨率尺寸 -->
+                <div v-if="actualDimensions.width > 0" class="detail-item detail-item--highlight">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <path d="M8 21h8M12 17v4" />
+                  </svg>
+                  <span>{{ actualDimensions.width }} × {{ actualDimensions.height }}</span>
+                </div>
+                <!-- 文件大小 -->
+                <div class="detail-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                  </svg>
+                  <span>{{ formattedSize }}</span>
+                </div>
+                <!-- 上传日期 -->
+                <div class="detail-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <span>{{ formattedDate }}</span>
+                  <span class="detail-sub">({{ relativeTime }})</span>
+                </div>
+              </template>
             </div>
 
             <!-- 原图信息卡片（仅在有预览图时显示，突出原图质量吸引下载） -->
@@ -552,7 +608,7 @@ onUnmounted(() => {
   justify-content: center;
   flex: 1;
   min-height: 200px;
-  max-height: 55vh; // 移动端限制图片区域高度，确保信息区域可见
+  max-height: 60vh; // 移动端限制图片区域高度，增大显示空间
   background: var(--color-bg-primary);
   overflow: hidden;
 
@@ -672,8 +728,10 @@ onUnmounted(() => {
   padding: $spacing-lg;
   background: var(--color-bg-card);
 
-  // 移动端底部圆角
+  // 移动端底部圆角 + 缩小间距
   @include mobile-only {
+    gap: $spacing-sm;
+    padding: $spacing-md;
     border-radius: 0 0 var(--radius-xl) var(--radius-xl);
   }
 
@@ -760,6 +818,25 @@ onUnmounted(() => {
   padding: $spacing-md;
   background: var(--color-bg-hover);
   border-radius: var(--radius-md);
+
+  // 移动端紧凑布局
+  &--compact {
+    gap: $spacing-xs;
+    padding: $spacing-sm;
+  }
+}
+
+// 移动端详情行
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+
+  .detail-item {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 .detail-item {

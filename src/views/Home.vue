@@ -158,6 +158,11 @@ onMounted(() => {
 <style lang="scss" scoped>
 .home-page {
   padding: $spacing-md 0 $spacing-2xl;
+
+  // 移动端：为 fixed 的筛选栏预留空间
+  @include mobile-only {
+    padding-top: calc($spacing-md + 52px); // 52px 为筛选栏高度
+  }
 }
 
 .error-state {

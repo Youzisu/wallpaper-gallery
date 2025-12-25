@@ -43,12 +43,26 @@ gsap.registerPlugin(Flip)
 
 const router = useRouter()
 const { currentSeries, currentSeriesConfig, availableSeriesOptions } = useWallpaperType()
-const { viewMode } = useViewMode()
+const { viewMode, setViewMode } = useViewMode()
 const { isMobile } = useDevice()
 const gridRef = ref(null)
+const wrapperRef = ref(null)
 const isAnimating = ref(false)
-// 用于控制实际显示的视图模式
+// PC端用于控制动画切换的视图模式
 const displayViewMode = ref(viewMode.value)
+// 实际渲染使用的视图模式（移动端瀑布流使用特殊实现）
+const effectiveViewMode = computed(() => {
+  if (isMobile.value) {
+    // 移动端：列表和网格正常支持，瀑布流使用 Flex 分列实现
+    return viewMode.value === 'masonry' ? 'masonry' : viewMode.value
+  }
+  return displayViewMode.value
+})
+
+// 移动端是否使用 Flex 瀑布流（用于逻辑判断和模板渲染）
+const useMobileMasonry = computed(() => {
+  return isMobile.value && viewMode.value === 'masonry'
+})
 
 // ========================================
 // 移动端滚动加载相关
@@ -57,6 +71,79 @@ const MOBILE_PAGE_SIZE = 20
 const mobileDisplayCount = ref(MOBILE_PAGE_SIZE)
 const isLoadingMore = ref(false)
 const scrollPaused = ref(false) // 滚动加载暂停标记
+
+// ========================================
+// 移动端 Flex 瀑布流分列相关
+// ========================================
+const mobileMasonryRef = ref(null)
+const leftColumnRef = ref(null)
+const rightColumnRef = ref(null)
+const leftColumnItems = ref([])
+const rightColumnItems = ref([])
+const leftColumnHeight = ref(0)
+const rightColumnHeight = ref(0)
+const distributedCount = ref(0) // 已分配的元素数量
+
+// 重置分列数据
+function resetMasonryColumns() {
+  leftColumnItems.value = []
+  rightColumnItems.value = []
+  leftColumnHeight.value = 0
+  rightColumnHeight.value = 0
+  distributedCount.value = 0
+}
+
+// 分配元素到最短列
+function distributeToColumns(items) {
+  for (const item of items) {
+    // 添加到较短的列
+    if (leftColumnHeight.value <= rightColumnHeight.value) {
+      leftColumnItems.value.push(item)
+      // 预估高度（基于图片比例）
+      leftColumnHeight.value += estimateItemHeight(item)
+    }
+    else {
+      rightColumnItems.value.push(item)
+      rightColumnHeight.value += estimateItemHeight(item)
+    }
+  }
+  distributedCount.value = leftColumnItems.value.length + rightColumnItems.value.length
+}
+
+// 预估元素高度（基于图片比例）
+function estimateItemHeight(_item) {
+  const ratio = currentSeriesConfig.value?.aspectRatio || '16/10'
+  const [w, h] = ratio.split('/').map(Number)
+  // 假设列宽为 100，计算高度
+  return (100 * h) / w
+}
+
+// 图片加载完成后更新列高度
+function handleImageLoad(_column, _index) {
+  nextTick(() => {
+    updateColumnHeights()
+  })
+}
+
+// 更新列高度（从 DOM 读取实际高度）
+function updateColumnHeights() {
+  if (leftColumnRef.value) {
+    leftColumnHeight.value = leftColumnRef.value.offsetHeight
+  }
+  if (rightColumnRef.value) {
+    rightColumnHeight.value = rightColumnRef.value.offsetHeight
+  }
+}
+
+// 初始化分列数据
+function initMasonryColumns() {
+  if (!useMobileMasonry.value)
+    return
+
+  resetMasonryColumns()
+  const items = props.wallpapers.slice(0, mobileDisplayCount.value)
+  distributeToColumns(items)
+}
 
 // 移动端显示的项目
 const mobileDisplayedItems = computed(() => {
@@ -90,14 +177,25 @@ function loadMore() {
 
   isLoadingMore.value = true
 
-  // 模拟加载延迟，让动画更平滑
   setTimeout(() => {
-    mobileDisplayCount.value = Math.min(
+    const oldCount = mobileDisplayCount.value
+    const newCount = Math.min(
       mobileDisplayCount.value + MOBILE_PAGE_SIZE,
       props.wallpapers.length,
     )
+    mobileDisplayCount.value = newCount
+
+    // 如果是瀑布流模式，需要将新加载的元素分配到列中
+    if (useMobileMasonry.value) {
+      // 先更新实际列高度
+      updateColumnHeights()
+      // 只分配新增的元素
+      const newItems = props.wallpapers.slice(oldCount, newCount)
+      distributeToColumns(newItems)
+    }
+
     isLoadingMore.value = false
-  }, 300)
+  }, 150)
 }
 
 // 暂停滚动加载
@@ -178,6 +276,67 @@ const displayedItems = computed(() => {
 // 用于控制列表显示的状态，避免闪烁
 const showGrid = ref(true)
 
+// ========================================
+// 移动端手势滑动支持（无动画，直接切换）
+// ========================================
+const VIEW_MODE_ORDER = ['grid', 'masonry', 'list']
+
+function getModeIndex(mode) {
+  return VIEW_MODE_ORDER.indexOf(mode)
+}
+
+const touchStartX = ref(0)
+const touchStartY = ref(0)
+const isSwiping = ref(false)
+
+function handleTouchStart(e) {
+  if (!isMobile.value)
+    return
+  touchStartX.value = e.touches[0].clientX
+  touchStartY.value = e.touches[0].clientY
+  isSwiping.value = false
+}
+
+function handleTouchMove(e) {
+  if (!isMobile.value)
+    return
+
+  const deltaX = e.touches[0].clientX - touchStartX.value
+  const deltaY = e.touches[0].clientY - touchStartY.value
+
+  // 判断是否是水平滑动（水平位移 > 垂直位移 * 1.5）
+  if (Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && Math.abs(deltaX) > 30) {
+    isSwiping.value = true
+  }
+}
+
+function handleTouchEnd(e) {
+  if (!isMobile.value || !isSwiping.value)
+    return
+
+  const deltaX = e.changedTouches[0].clientX - touchStartX.value
+
+  // 滑动距离超过 80px 才触发切换
+  if (Math.abs(deltaX) > 80) {
+    const currentIndex = getModeIndex(viewMode.value)
+    let newIndex
+
+    if (deltaX < 0) {
+      // 向左滑 → 下一个模式
+      newIndex = (currentIndex + 1) % VIEW_MODE_ORDER.length
+    }
+    else {
+      // 向右滑 → 上一个模式
+      newIndex = (currentIndex - 1 + VIEW_MODE_ORDER.length) % VIEW_MODE_ORDER.length
+    }
+
+    // 直接切换视图模式（无动画）
+    setViewMode(VIEW_MODE_ORDER[newIndex])
+  }
+
+  isSwiping.value = false
+}
+
 // Flip 插件预热标记
 const isFlipWarmedUp = ref(false)
 
@@ -185,6 +344,16 @@ const isFlipWarmedUp = ref(false)
 // 视图切换动画 - 使用 GSAP Flip 实现丝滑形态变换
 // ========================================
 watch(viewMode, async (newMode, oldMode) => {
+  // 移动端：直接切换，如果是瀑布流则初始化分列数据
+  if (isMobile.value) {
+    if (newMode === 'masonry') {
+      resetMasonryColumns()
+      const items = props.wallpapers.slice(0, mobileDisplayCount.value)
+      distributeToColumns(items)
+    }
+    return
+  }
+
   if (!gridRef.value || newMode === oldMode)
     return
 
@@ -207,6 +376,12 @@ watch(viewMode, async (newMode, oldMode) => {
       resumePagination()
       resumeScrollLoad()
       return
+    }
+
+    // 在 wrapper 上设置 minHeight，避免影响 grid 内部布局
+    if (wrapperRef.value) {
+      const currentHeight = wrapperRef.value.offsetHeight
+      wrapperRef.value.style.minHeight = `${currentHeight}px`
     }
 
     // 记录当前卡片的位置和尺寸状态
@@ -233,6 +408,10 @@ watch(viewMode, async (newMode, oldMode) => {
         isFlipWarmedUp.value = true
         resumePagination()
         resumeScrollLoad()
+        // 动画完成后清除固定高度
+        if (wrapperRef.value) {
+          wrapperRef.value.style.minHeight = ''
+        }
       },
     })
   }
@@ -242,6 +421,10 @@ watch(viewMode, async (newMode, oldMode) => {
     isAnimating.value = false
     resumePagination()
     resumeScrollLoad()
+    // 错误时也要清除固定高度
+    if (wrapperRef.value) {
+      wrapperRef.value.style.minHeight = ''
+    }
   }
 })
 
@@ -258,61 +441,34 @@ function warmupFlip() {
 }
 
 // 页面切换时的入场动画
-function animateCardsIn(options = {}) {
+function animateCardsIn() {
   if (!gridRef.value)
     return
-
-  const { isFilter = false } = options
 
   nextTick(() => {
     const cards = gridRef.value?.querySelectorAll('.wallpaper-card')
     if (cards && cards.length > 0) {
-      // 筛选切换时使用更丝滑的动画（卡片依次弹出）
-      if (isFilter) {
-        gsap.fromTo(
-          cards,
-          {
-            opacity: 0,
-            y: 40,
-            scale: 0.88,
+      // 统一使用向上弹出的入场动画
+      gsap.fromTo(
+        cards,
+        {
+          opacity: 0,
+          y: 20,
+          scale: 0.98,
+        },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.35,
+          stagger: {
+            amount: 0.25,
+            from: 'start',
           },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            duration: 0.35,
-            stagger: {
-              each: 0.06, // 每个卡片固定延迟60ms，依次出现更明显
-              from: 'start',
-            },
-            ease: 'back.out(1.4)',
-            onComplete: warmupFlip,
-          },
-        )
-      }
-      else {
-        // 普通入场动画
-        gsap.fromTo(
-          cards,
-          {
-            opacity: 0,
-            y: 20,
-            scale: 0.98,
-          },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            duration: 0.35,
-            stagger: {
-              amount: 0.25,
-              from: 'start',
-            },
-            ease: 'power2.out',
-            onComplete: warmupFlip,
-          },
-        )
-      }
+          ease: 'power2.out',
+          onComplete: warmupFlip,
+        },
+      )
     }
   })
 }
@@ -321,6 +477,11 @@ function animateCardsIn(options = {}) {
 onMounted(() => {
   // 添加滚动监听（移动端）
   window.addEventListener('scroll', handleScroll)
+
+  // 初始化移动端瀑布流分列
+  if (useMobileMasonry.value && props.wallpapers.length > 0) {
+    initMasonryColumns()
+  }
 
   if (gridRef.value && displayedItems.value.length > 0) {
     animateCardsIn()
@@ -334,43 +495,43 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
 })
 
-// 监听 wallpapers 变化（筛选/搜索时）- 带丝滑动画
+// 监听 wallpapers 变化（筛选/搜索/分类切换时）
 watch(() => props.wallpapers, async (newVal, oldVal) => {
   // 重置移动端显示数量
   mobileDisplayCount.value = MOBILE_PAGE_SIZE
 
-  if (oldVal && oldVal.length > 0 && newVal.length > 0) {
-    // 获取当前显示的卡片
-    const cards = gridRef.value?.querySelectorAll('.wallpaper-card')
-
-    if (cards && cards.length > 0) {
-      // 先播放退出动画
-      await gsap.to(cards, {
-        opacity: 0,
-        y: -15,
-        scale: 0.95,
-        duration: 0.25,
-        stagger: {
-          amount: 0.1,
-          from: 'end', // 从最后一个开始退出
-        },
-        ease: 'power2.in',
-      })
+  // 重置瀑布流分列数据
+  if (useMobileMasonry.value) {
+    resetMasonryColumns()
+    if (newVal && newVal.length > 0) {
+      const items = newVal.slice(0, MOBILE_PAGE_SIZE)
+      distributeToColumns(items)
     }
+  }
 
-    // 短暂隐藏，切换数据
-    showGrid.value = false
+  // 首次加载（从无到有）
+  if (!oldVal || oldVal.length === 0) {
+    showGrid.value = true
     await nextTick()
+    // 首次加载也执行入场动画
+    if (newVal && newVal.length > 0) {
+      animateCardsIn()
+    }
+    else {
+      warmupFlip()
+    }
+    return
+  }
 
-    // 显示新数据并播放入场动画
+  // 分类切换/筛选（从有到有）：先隐藏，再显示并执行动画
+  showGrid.value = false
+
+  setTimeout(() => {
     showGrid.value = true
-    animateCardsIn({ isFilter: true })
-  }
-  else if (newVal.length > 0) {
-    // 从无到有，直接播放入场动画
-    showGrid.value = true
-    animateCardsIn({ isFilter: true })
-  }
+    nextTick(() => {
+      animateCardsIn()
+    })
+  }, 100)
 }, { deep: false })
 
 // 处理分页切换（桌面端）
@@ -415,17 +576,28 @@ const skeletonCount = computed(() => isMobile.value ? 6 : 12)
 </script>
 
 <template>
-  <div class="wallpaper-grid-wrapper">
+  <div ref="wrapperRef" class="wallpaper-grid-wrapper">
     <!-- Loading State: 骨架屏 -->
-    <div v-if="loading" class="wallpaper-grid skeleton-grid" :class="[`view-${displayViewMode}`, `aspect-${aspectType}`]">
-      <div v-for="n in skeletonCount" :key="n" class="skeleton-card">
-        <div class="skeleton-image">
-          <div class="skeleton-shimmer" />
-        </div>
-        <!-- 桌面端显示骨架信息 -->
-        <div v-if="!isMobile" class="skeleton-info">
-          <div class="skeleton-title" />
-          <div class="skeleton-meta" />
+    <div v-if="loading" class="loading-state">
+      <!-- 移动端加载提示 -->
+      <div v-if="isMobile" class="mobile-loading-hint">
+        <LoadingSpinner size="md" />
+        <p class="loading-text">
+          正在加载{{ currentSeriesName }}...
+        </p>
+      </div>
+
+      <!-- 骨架屏 -->
+      <div class="wallpaper-grid skeleton-grid" :class="[`view-${effectiveViewMode}`, `aspect-${aspectType}`]">
+        <div v-for="n in skeletonCount" :key="n" class="skeleton-card">
+          <div class="skeleton-image">
+            <div class="skeleton-shimmer" />
+          </div>
+          <!-- 桌面端显示骨架信息 -->
+          <div v-if="!isMobile" class="skeleton-info">
+            <div class="skeleton-title" />
+            <div class="skeleton-meta" />
+          </div>
         </div>
       </div>
     </div>
@@ -488,10 +660,53 @@ const skeletonCount = computed(() => isMobile.value ? 6 : 12)
 
     <!-- Grid -->
     <template v-else>
+      <!-- 移动端 Flex 瀑布流布局 -->
       <div
+        v-if="useMobileMasonry"
+        ref="mobileMasonryRef"
+        class="mobile-masonry"
+        :class="{ 'is-hidden': !showGrid }"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
+      >
+        <div ref="leftColumnRef" class="masonry-column">
+          <WallpaperCard
+            v-for="(wallpaper, index) in leftColumnItems"
+            :key="wallpaper.id"
+            :wallpaper="wallpaper"
+            :index="index"
+            :search-query="searchQuery"
+            view-mode="masonry"
+            :aspect-ratio="currentSeriesConfig?.aspectRatio || '16/10'"
+            @click="handleSelect"
+            @image-load="handleImageLoad('left', index)"
+          />
+        </div>
+        <div ref="rightColumnRef" class="masonry-column">
+          <WallpaperCard
+            v-for="(wallpaper, index) in rightColumnItems"
+            :key="wallpaper.id"
+            :wallpaper="wallpaper"
+            :index="index"
+            :search-query="searchQuery"
+            view-mode="masonry"
+            :aspect-ratio="currentSeriesConfig?.aspectRatio || '16/10'"
+            @click="handleSelect"
+            @image-load="handleImageLoad('right', index)"
+          />
+        </div>
+      </div>
+
+      <!-- 常规布局（网格、列表、PC瀑布流） -->
+      <div
+        v-else
         ref="gridRef"
         class="wallpaper-grid"
-        :class="[`view-${displayViewMode}`, `aspect-${aspectType}`, { 'is-hidden': !showGrid, 'is-animating': isAnimating }]"
+        :class="[`view-${effectiveViewMode}`, `aspect-${aspectType}`, { 'is-hidden': !showGrid, 'is-animating': isAnimating }]"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
       >
         <WallpaperCard
           v-for="(wallpaper, index) in displayedItems"
@@ -499,7 +714,7 @@ const skeletonCount = computed(() => isMobile.value ? 6 : 12)
           :wallpaper="wallpaper"
           :index="index"
           :search-query="searchQuery"
-          :view-mode="displayViewMode"
+          :view-mode="effectiveViewMode"
           :aspect-ratio="currentSeriesConfig?.aspectRatio || '16/10'"
           @click="handleSelect"
         />
@@ -513,9 +728,9 @@ const skeletonCount = computed(() => isMobile.value ? 6 : 12)
         </div>
       </div>
 
-      <!-- 桌面端：分页 -->
+      <!-- 桌面端：分页（动画期间隐藏，避免位置错乱） -->
       <Pagination
-        v-if="!isMobile"
+        v-if="!isMobile && !isAnimating"
         :current="currentPage"
         :total="wallpapers.length"
         :page-size="pageSize"
@@ -530,6 +745,7 @@ const skeletonCount = computed(() => isMobile.value ? 6 : 12)
 <style lang="scss" scoped>
 .wallpaper-grid-wrapper {
   min-height: 400px;
+  overflow-x: hidden; // 防止动画时出现横向滚动条
 }
 
 // ========================================
@@ -602,6 +818,39 @@ const skeletonCount = computed(() => isMobile.value ? 6 : 12)
 }
 
 // ========================================
+// 移动端首次加载提示
+// ========================================
+.loading-state {
+  position: relative;
+}
+
+.mobile-loading-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-md;
+  padding: $spacing-xl 0;
+  margin-bottom: $spacing-md;
+
+  .loading-text {
+    font-size: $font-size-sm;
+    color: var(--color-text-muted);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+// ========================================
 // 移动端加载更多
 // ========================================
 .mobile-load-more {
@@ -616,6 +865,26 @@ const skeletonCount = computed(() => isMobile.value ? 6 : 12)
   gap: $spacing-sm;
   color: var(--color-text-muted);
   font-size: $font-size-sm;
+}
+
+// ========================================
+// 移动端 Flex 瀑布流布局
+// ========================================
+.mobile-masonry {
+  display: flex;
+  gap: $spacing-sm;
+  transition: opacity 0.15s ease;
+
+  &.is-hidden {
+    opacity: 0;
+  }
+
+  .masonry-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
 }
 
 .wallpaper-grid {

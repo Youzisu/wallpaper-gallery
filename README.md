@@ -2,9 +2,9 @@
 
 一个高雅大气的壁纸展示网站，基于 Vue 3 + Vite 7 构建，完美适配桌面端和移动端。
 
-## 特性
+## ✨ 特性
 
-### 核心功能
+### 🎨 核心功能
 
 - **高清壁纸展示** - 支持 4K 及更高分辨率壁纸
 - **三大系列** - 电脑壁纸、手机壁纸、头像，根据设备智能推荐
@@ -14,29 +14,40 @@
 - **格式筛选** - 按 JPG/PNG 格式筛选
 - **一键下载** - 直接下载原图
 
-### 视图与浏览
+### 🖼️ 视图与浏览
 
-- **多视图模式** - 桌面端：网格/列表/瀑布流；移动端：瀑布流/列表（默认瀑布流）
+- **多视图模式**
+  - 桌面端：网格/列表/瀑布流，支持 GSAP Flip 动画丝滑切换
+  - 移动端：网格/列表/瀑布流，支持手势左右滑动切换视图
 - **丝滑切换动画** - 基于 GSAP Flip 插件的视图模式切换动画，卡片平滑形变过渡
+- **移动端 Flex 瀑布流** - 采用 Flex + JS 分列算法，解决 CSS columns 滚动加载时图片重排问题
 - **导航滑块动画** - 系列切换时背景滑块平滑过渡，避免元素抖动
 - **动态宽高比** - 根据系列自动适配卡片比例（电脑16:10、手机9:16、头像1:1）
 - **全屏浏览** - 沉浸式全屏浏览模式，ESC 退出
 - **传统分页** - 支持页码跳转、每页条数切换（10/20/30/50）
+- **移动端无限滚动** - 滚动到底部自动加载更多
 - **今日精选** - 每日随机推荐精选壁纸（仅电脑壁纸系列）
 
-### 用户体验
+### 💫 用户体验
 
 - **智能设备检测** - 综合 User Agent、触摸支持、屏幕尺寸判断设备类型
 - **主题切换** - 深色/浅色主题，自动跟随系统
 - **响应式设计** - 完美适配桌面端和移动端
-- **移动端优化** - 底部筛选弹窗、顶部搜索弹窗、侧边导航抽屉、精简视图切换（瀑布流/列表）
+- **移动端优化**
+  - 底部筛选弹窗
+  - 顶部搜索弹窗
+  - 侧边导航抽屉
+  - 手势滑动切换视图（左滑下一个，右滑上一个）
+  - 筛选栏吸顶效果
 - **用户偏好记忆** - 记住用户的系列选择、排序方式、视图模式
 - **友好空状态** - 区分"系列无数据"和"筛选无结果"，提供快捷操作
 - **流畅动画** - GSAP 驱动的精致过渡动画
 - **回到顶部** - 平滑滚动回到页面顶部
 - **本地缩略图** - 预生成 WebP 缩略图，首页加载更快
+- **滚动条布局稳定** - 使用 `scrollbar-gutter: stable` 防止滚动条出现/消失时页面抖动
+- **图片缓存检测** - 切换视图时检测已缓存图片，避免重复显示加载状态
 
-### 安全防护
+### 🔒 安全防护
 
 - **数据加密** - JSON 数据采用自定义编码方案（Base64 + 字符映射 + 反转）
 - **代码混淆** - 敏感文件（codec/constants/format/anti-debug）生产环境自动混淆
@@ -50,25 +61,27 @@
   - Performance API 检测
 - **动态 URL 构建** - CDN 链接动态拼接，防止静态分析提取
 
-### 路由与导航
+### 🧭 路由与导航
 
 - **智能重定向** - 首次访问根据设备类型自动跳转到推荐系列
 - **偏好优先** - 用户明确选择的系列优先于设备推荐
 - **循环检测** - 防止路由守卫产生无限循环
 - **历史优化** - 使用 replace 避免污染浏览历史
 
-## 技术栈
+## 🛠️ 技术栈
 
-- **框架**: Vue 3.5 (Composition API + script setup)
-- **构建工具**: Vite 7
-- **UI 组件**: Element Plus (PC端) + Vant (移动端)
-- **动画**: GSAP + Flip 插件
-- **样式**: Sass + postcss-pxtorem (移动端适配)
-- **路由**: Vue Router 4
-- **代码混淆**: javascript-obfuscator (自定义 Vite 插件)
-- **部署**: GitHub Pages + GitHub Actions
+| 类别 | 技术 |
+| --- | --- |
+| 框架 | Vue 3.5 (Composition API + script setup) |
+| 构建工具 | Vite 7 |
+| UI 组件 | Element Plus (PC端) + Vant (移动端) |
+| 动画 | GSAP + Flip 插件 |
+| 样式 | Sass + postcss-pxtorem (移动端适配) |
+| 路由 | Vue Router 4 |
+| 代码混淆 | javascript-obfuscator (自定义 Vite 插件) |
+| 部署 | GitHub Pages + GitHub Actions |
 
-## 开发
+## 🚀 开发
 
 ```bash
 # 安装依赖
@@ -86,47 +99,48 @@ pnpm build
 # 预览构建结果
 pnpm preview
 ```
-## 项目结构
+
+## 📁 项目结构
 
 ```text
 wallpaper-gallery/
 ├── .github/workflows/    # GitHub Actions 配置
 ├── public/
-│   └── data/            # 壁纸数据 JSON（构建时生成）
-│       ├── desktop.json # 电脑壁纸数据
-│       ├── mobile.json  # 手机壁纸数据
-│       └── avatar.json  # 头像数据
+│   └── data/             # 壁纸数据 JSON（构建时生成）
+│       ├── desktop.json  # 电脑壁纸数据
+│       ├── mobile.json   # 手机壁纸数据
+│       └── avatar.json   # 头像数据
 ├── scripts/
-│   └── generate-data.js # 数据生成脚本（含加密）
+│   └── generate-data.js  # 数据生成脚本（含加密）
 ├── build/
 │   └── vite-plugin-obfuscate.js # 自定义混淆插件
 ├── src/
-│   ├── assets/styles/   # 全局样式（Sass）
-│   ├── components/      # Vue 组件
-│   │   ├── common/      # 通用组件（搜索、筛选、回到顶部等）
-│   │   ├── home/        # 首页组件（今日精选）
-│   │   ├── layout/      # 布局组件（头部、底部）
-│   │   └── wallpaper/   # 壁纸相关组件
-│   ├── composables/     # 组合式函数
-│   │   ├── useDevice.js     # 设备检测（UA、触摸、屏幕尺寸）
-│   │   ├── useFilter.js     # 筛选与动态分类
-│   │   ├── usePagination.js # 传统分页（页码跳转、每页条数）
-│   │   ├── useTheme.js      # 主题管理
-│   │   ├── useViewMode.js   # 视图模式
-│   │   ├── useWallpapers.js # 壁纸数据管理
+│   ├── assets/styles/    # 全局样式（Sass）
+│   ├── components/       # Vue 组件
+│   │   ├── common/       # 通用组件（搜索、筛选、回到顶部等）
+│   │   ├── home/         # 首页组件（今日精选）
+│   │   ├── layout/       # 布局组件（头部、底部）
+│   │   └── wallpaper/    # 壁纸相关组件
+│   ├── composables/      # 组合式函数
+│   │   ├── useDevice.js      # 设备检测（UA、触摸、屏幕尺寸）
+│   │   ├── useFilter.js      # 筛选与动态分类
+│   │   ├── usePagination.js  # 传统分页（页码跳转、每页条数）
+│   │   ├── useTheme.js       # 主题管理
+│   │   ├── useViewMode.js    # 视图模式
+│   │   ├── useWallpapers.js  # 壁纸数据管理
 │   │   └── useWallpaperType.js # 系列管理
-│   ├── router/          # Vue Router 路由配置（智能重定向）
-│   ├── views/           # 页面视图组件
-│   └── utils/           # 工具函数和常量
-│       ├── constants.js    # 常量配置（动态 URL 构建）
-│       ├── format.js       # 格式化工具函数
-│       ├── codec.js        # 数据编解码
-│       ├── codec-config.js # 编解码配置
-│       └── anti-debug.js   # 反调试保护
+│   ├── router/           # Vue Router 路由配置（智能重定向）
+│   ├── views/            # 页面视图组件
+│   └── utils/            # 工具函数和常量
+│       ├── constants.js     # 常量配置（动态 URL 构建）
+│       ├── format.js        # 格式化工具函数
+│       ├── codec.js         # 数据编解码
+│       ├── codec-config.js  # 编解码配置
+│       └── anti-debug.js    # 反调试保护
 └── index.html
 ```
 
-## 三大系列
+## 📱 三大系列
 
 | 系列 | 路由 | 设备可见性 | 宽高比 |
 | --- | --- | --- | --- |
@@ -161,6 +175,6 @@ nuanXinProPic/
 
 **降级策略**：缩略图加载失败时自动切换到 [wsrv.nl](https://wsrv.nl) 代理服务生成缩略图，确保图片始终可用。
 
-## License
+## 📄 License
 
 MIT

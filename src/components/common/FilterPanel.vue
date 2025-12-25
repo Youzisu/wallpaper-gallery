@@ -401,7 +401,7 @@ function resetFilters() {
   gap: $spacing-md;
   padding: $spacing-md $spacing-lg;
   background: var(--color-bg-secondary);
-  border-radius: $radius-lg;
+  border-radius: $radius-md;
   border: 1px solid var(--color-border);
   transition: all 0.3s ease;
   margin-bottom: $spacing-lg;
@@ -846,8 +846,20 @@ function resetFilters() {
 // 响应式
 @include mobile-only {
   .filter-panel {
+    // 移动端改为 fixed 定位，与导航栏融合
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: $header-height; // 72px，紧贴导航栏下方
+    border-radius: 0; // 移除圆角，与导航栏融合
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    margin-bottom: 0;
     padding: $spacing-sm $spacing-md;
-    margin-bottom: $spacing-md;
+    // 移除 sticky 相关的 hack
+    -webkit-transform: none;
+    transform: none;
   }
 
   .filter-left {

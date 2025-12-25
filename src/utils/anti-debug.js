@@ -14,7 +14,7 @@ export function initAntiDebug() {
     return
   }
 
-  const warningMessage = '兄弟bro，想打开控制台干啥呢？ 😏'
+  const warningMessage = '兄弟 bro，不允许复制哦😏😏'
 
   // ========================================
   // 1. 禁用快捷键（capture 阶段拦截）- 核心保护
