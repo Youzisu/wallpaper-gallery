@@ -41,7 +41,7 @@ export default defineConfig({
     }),
   ].filter(Boolean),
   
-  base: '/wallpaper-gallery/',  // ⚠️ 关键修改：改成你的仓库名
+  base: '/',  // ⚠️ 关键修改：改成你的仓库名
   
   resolve: {
     alias: {
