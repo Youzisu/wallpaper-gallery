@@ -456,7 +456,7 @@ function closeSearch() {
           <!-- 外部链接 -->
           <div class="drawer-section">
             <a
-              href="https://github.com/IT-NuanxinPro"
+              href="https://github.com/IT-NuanxinPro/wallpaper-gallery"
               target="_blank"
               rel="noopener noreferrer"
               class="nav-item external-link"
