@@ -296,7 +296,7 @@ function closeSearch() {
         </button>
 
         <a
-          href="https://github.com/IT-NuanxinPro"
+          href="https://github.com/IT-NuanxinPro/wallpaper-gallery"
           target="_blank"
           rel="noopener noreferrer"
           class="github-link"
